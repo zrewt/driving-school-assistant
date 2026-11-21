@@ -17,7 +17,7 @@ This guide is written for a beginner. Work through **Part 2** from top to bottom
                                                        1. checks Retell's signature
                                                        2. finds the school by the number that was called
                                                        3. saves the call + lead in Supabase (no duplicates)
-                                                       4. texts the admin a summary + texts the caller a thank-you (Twilio)
+                                                       4. texts the admin a summary + texts the caller a thank-you (Telnyx, or Twilio)
                                                                                    │
                                                      Dashboard (phone-friendly): Leads · Stats · Settings
                                                      Every Monday 9 a.m.: weekly report text to the owner
@@ -30,7 +30,7 @@ This guide is written for a beginner. Work through **Part 2** from top to bottom
 | Login | `app/login`, `proxy.ts`, `lib/supabase/*` | Email + password login; `/dashboard` requires login |
 | Create school | `app/dashboard/create-school-form.tsx` | New users with no school can create one |
 | Webhook | `app/api/retell-webhook/route.ts`, `lib/retell*.ts`, `lib/save-call.ts` | Receives finished calls from Retell |
-| Texts | `lib/sms.ts`, `lib/messages.ts`, `lib/notify-lead.ts` | Twilio SMS, or printed in the terminal when `MOCK_SMS=true` |
+| Texts | `lib/sms.ts`, `lib/messages.ts`, `lib/notify-lead.ts` | Telnyx or Twilio SMS (`SMS_PROVIDER`), or printed in the terminal when `MOCK_SMS=true` |
 | Leads | `app/dashboard/page.tsx`, `app/dashboard/leads/[id]` | List, filters, details, recording, transcript, status buttons |
 | Settings | `app/dashboard/settings`, `lib/agent-prompt.ts` | School info + "Copy AI agent prompt" + Retell field list |
 | Stats | `app/dashboard/stats`, `lib/stats.ts` | This week vs last week |
@@ -139,17 +139,34 @@ npm run test:webhook -- --owner
 
 The admin text should end with **⚠️ Needs owner**, and the lead shows a red **Owner** tag.
 
-### ☐ Step 7: Twilio (real text messages)
+### ☐ Step 7: Telnyx (real text messages)
 
-1. Sign up at <https://www.twilio.com> and verify your phone.
-2. **Console home → Account Info**: copy the **Account SID** → `TWILIO_ACCOUNT_SID` and the **Auth Token** → `TWILIO_AUTH_TOKEN`.
-3. Buy a number: **Phone Numbers → Manage → Buy a number** → Country **Canada** → tick **SMS** → pick a local area code (416/647/905/289…) → **Buy**. Put it in `TWILIO_FROM_NUMBER` in E.164 format, like `+16475550100`.
-4. **Canadian SMS rules: check these before going live.**
-   - Read Twilio's current **"SMS guidelines: Canada"** page (search that phrase). The rules change, and some number types (for example toll-free) need a verification step first.
-   - Canada's anti-spam law (CASL): our texts answer a call the person just made (a confirmation), which is generally allowed. **Don't** use these numbers for marketing blasts.
-   - Twilio automatically handles replies like **STOP**.
-   - **Trial accounts** can only text numbers you've verified in Twilio, and every message starts with "Sent from your Twilio trial account". Upgrade (add a payment method) before the pilot.
-5. To send real texts, set `MOCK_SMS=false` in `.env.local` and restart `npm run dev`. Make the demo school's **Admin phone** (Settings page) your own mobile so you receive the texts.
+We use **Telnyx** for texts. The same Telnyx number can also be the AI phone number Retell answers (Step 10), so callers get the confirmation text from the number they called. Telnyx's portal is at <https://portal.telnyx.com>.
+
+1. **Sign up** at <https://telnyx.com/sign-up> and confirm your email. Choose **Canada** as your country if asked: a trial can only buy a local number from your account's country.
+2. **Verify your own mobile** (a trial can only text one verified number): open **Verified Numbers** (<https://portal.telnyx.com/#/numbers/verified-numbers>) → add your mobile → enter the code Telnyx sends you.
+3. **Buy a number:** **Numbers → Search & Buy** → search a Toronto-area code (416, 647, 905…) → tick **SMS** (and **Voice**, for Step 10) under features → **Search** → **Add to Cart** → **Place Order**.
+   - Trial accounts get **US$5** of credit and **one** number. The number is **taken back after 30 days unless you upgrade**, so upgrade before the pilot (**add a credit card**).
+4. **Create a messaging profile:** **Messaging** → **Add new profile** → name it `Driving School` → **Save**.
+5. **Connect the number to that profile:** **Numbers → My Numbers** → find your number → in the **Messaging Profile** dropdown pick `Driving School` → save. *(Skip this and Telnyx refuses to send, with a 403 "not assigned to a messaging profile" error.)*
+6. **Get your API key:** **API Keys** (<https://portal.telnyx.com/#/app/api-keys>) → **Create API Key** (trial accounts can have one) → copy it right away.
+7. **Fill in `.env.local`:**
+   ```
+   SMS_PROVIDER=telnyx
+   TELNYX_API_KEY=KEY...              (from step 6)
+   TELNYX_FROM_NUMBER=+16475551234    (your Telnyx number, with +1, no spaces)
+   MOCK_SMS=false
+   ```
+8. In the app's **Settings**, set **Admin phone** to your verified mobile → **Save**. Restart `npm run dev` (Ctrl+C, then `npm run dev`) and run `npm run test:webhook`.
+   - ✅ Your phone gets "📞 New lead: Priya S.…", and the terminal shows `[sms] Sent … via Telnyx`.
+   - The caller confirmation shows `[sms] Telnyx failed …`. **That's expected on a trial**: the test caller (416-555-0123) is fake and not your verified number.
+   - Trial limits: 100 texts a day, only to your verified number.
+
+**Canadian texting rules: check these before going live.**
+- Telnyx's guides list regular Canadian numbers as not needing the US-style "10DLC" registration, but Telnyx says rules change and to **confirm with Telnyx support** before launching. Toll-free numbers need extra verification (including a CRA Business Number), so use a regular local number.
+- Canada's anti-spam law (CASL): our texts confirm a call the person just made, which is generally allowed. **Don't** use the number for marketing blasts.
+
+**Prefer Twilio instead?** Set `SMS_PROVIDER=twilio` and fill in `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and `TWILIO_FROM_NUMBER` instead. (Twilio's new console won't let a trial account buy a number; you need to upgrade and create a compliance profile first.)
 
 ### ☐ Step 8: Put the code on GitHub
 
@@ -170,7 +187,7 @@ git push -u origin main
 
 1. <https://vercel.com> → sign in with GitHub → **Add New… → Project** → **Import** `driving-school-assistant`. Don't click **Deploy** yet.
 2. On the same screen, open **Environment Variables** and add **every** variable from `.env.example` with real values:
-   - `MOCK_SMS` = `false` (or `true` while you're still testing without Twilio)
+   - `MOCK_SMS` = `false` (or `true` while you're still testing without real texts). Also add `SMS_PROVIDER`, `TELNYX_API_KEY` and `TELNYX_FROM_NUMBER`.
    - `APP_URL` = your Vercel URL, like `https://driving-school-assistant.vercel.app` (you can edit this after the first deploy and redeploy)
    - `CRON_SECRET` = a long random string. To make one in PowerShell:
 
@@ -206,8 +223,12 @@ git push -u origin main
 6. **Webhook URL**: in the agent's settings (or the account-wide **Webhooks** page) set it to:
    `https://YOUR-APP.vercel.app/api/retell-webhook`
    Retell can't reach `localhost`, so use the Vercel URL.
-7. **Phone number**: **Phone Numbers → Buy a number**. Pick a Toronto-area code if one is offered. Set the **inbound agent** to your new agent.
-   - If Retell can't offer a Canadian number, buy one in Twilio and connect it to Retell with Retell's **Import number / custom telephony (SIP trunk)** guide.
+7. **Phone number: use your Telnyx number** (recommended, so calls and texts come from one number). Follow Retell's guide <https://docs.retellai.com/deploy/telnyx>. In short:
+   - **In Telnyx:** create an **SIP trunk** (it may be called an "SIP Connection" or "Elastic SIP trunk") of type **FQDN**. Add the FQDN `sip.retellai.com` with DNS record type **SRV**. Set outbound authentication to **Credentials** (make up a username and password, and save them). Under inbound settings choose number format **+E.164**, codecs **G722, G711U, G711A**, and transport **TCP**. Create an **outbound voice profile** and select it. Then move your number onto this trunk (**My Numbers** → your number → connection = the trunk).
+   - **In Retell:** **Phone Numbers → Import number**. Enter your Telnyx number. Termination SIP URI: `sip.telnyx.com` (or the address for your region from <https://sip.telnyx.com>). Enter the username and password from above, and add the custom SIP header `X-Telnyx-Username` = your username. Click **Test SIP Connection**, then save.
+   - Set the number's **inbound agent** to your new agent.
+   - On a Telnyx **trial**, only your verified mobile can call in, and calls are capped at 10 minutes, so upgrade before real callers try it.
+   - *Simpler alternative:* buy a number directly in Retell (**Phone Numbers → Buy a number**). It works for calls, but then texts come from a different number (your Telnyx one).
 8. In your app's **Settings**, set **AI phone number** to that number and **Save**. **This is how calls are matched to your school.** If it's wrong, calls won't be saved.
 9. Quick test: call the AI number from your mobile and have a short conversation. About 30–60 seconds after hanging up you should get the admin text, and the lead appears on the dashboard.
 
@@ -252,7 +273,7 @@ The school's own phone must forward calls it can't answer to the **AI phone numb
 
 **What I actually ran before handing this over (with placeholder keys):** `npm run build` ✅, `npm run lint` ✅; dev server in mock mode with `npm run test:webhook --repeat` → lead parsed correctly, both texts printed, repeat delivery ignored ✅; `--owner` call → "⚠️ Needs owner" text ✅; signed request with the right key → 204, wrong key / unsigned → 401 ✅; cron without/with wrong secret → 401, right secret → skipped unless Monday 9 a.m. ✅; `/dashboard` logged-out → redirect to `/login` ✅. The SQL migration + seed were run in a real Postgres engine (PGlite) with a stand-in `auth` schema: tables, triggers, seed (twice), RLS isolation between two users, status-only updates and `create_school()` all worked ✅. The settings form and generated prompt were checked visually at phone size ✅.
 
-**Not yet verified (they need your real keys):** saving to a real Supabase project, the leads/lead-detail/stats pages with real data, real Twilio sending, and a real Retell call.
+**Not yet verified (they need your real keys):** saving to a real Supabase project, the leads/lead-detail/stats pages with real data, real Telnyx/Twilio sending (the Telnyx code follows Telnyx's docs but hasn't sent a real text yet), and a real Retell call.
 
 ---
 
@@ -274,7 +295,7 @@ The school's own phone must forward calls it can't answer to the **AI phone numb
 - **Server region**: `vercel.json` asks for Montréal (`yul1`).
 
 ### Known limitations
-- **Data in Canada, partly**: Supabase (Canada Central) and Vercel (Montréal) keep the database and app in Canada. **Retell and Twilio process calls and texts in the US**, and the call recording stays on Retell's servers (the dashboard links to it). Mention this in your privacy notice, and check Retell's data-retention settings.
+- **Data in Canada, partly**: Supabase (Canada Central) and Vercel (Montréal) keep the database and app in Canada. **Retell and the texting provider (Telnyx or Twilio) may process calls and texts outside Canada (largely in the US)**, and the call recording stays on Retell's servers (the dashboard links to it). Mention this in your privacy notice, and check Retell's data-retention settings.
 - No automatic deletion of old calls/recordings yet (PIPEDA says keep data only as long as needed).
 - If a user belongs to several schools, the dashboard shows the first one. There's no school switcher yet.
 - The leads list shows the latest 200 leads (no paging).
@@ -301,9 +322,13 @@ The school's own phone must forward calls it can't answer to the **AI phone numb
 | Webhook returns 401 | The signing key doesn't match. Use the Retell key with the **webhook** badge in `RETELL_WEBHOOK_SECRET` (Vercel too), then redeploy. |
 | Dev terminal says "No school has ai_phone_number = +1…" | The AI phone number in **Settings** doesn't match the number Retell answered on. Fix it in Settings. |
 | Dev terminal says "DRY RUN" | `SUPABASE_SERVICE_ROLE_KEY` or the URL is missing or a placeholder. |
-| Lead saved but no texts | `MOCK_SMS=true` (check the logs for MOCK SMS boxes), or Twilio isn't set up (look for `[sms] Failed`), or the school has no **Admin phone**. On a Twilio trial, the receiving number must be verified. |
-| Twilio error 21608 / 21614 | Trial account sending to an unverified number / not a mobile number. |
-| Texts arrive with "Sent from your Twilio trial account" | Upgrade the Twilio account. |
+| Lead saved but no texts | `MOCK_SMS=true` (check the logs for MOCK SMS boxes), or texting isn't set up (look for `[sms] … failed` or `not configured`), or the school has no **Admin phone**. On a trial, only your verified number can receive texts. |
+| Telnyx `HTTP 401` | Wrong or deleted `TELNYX_API_KEY`. Create a new one under **API Keys**. |
+| Telnyx `HTTP 402` | Out of credit. Add funds or upgrade the account. |
+| Telnyx `HTTP 403` "not assigned to a messaging profile" | Do Step 7.5: **My Numbers** → your number → Messaging Profile. |
+| Telnyx `HTTP 403`/`400` about the destination on a trial | You're texting a number that isn't your verified number. Expected for the fake test caller. |
+| Telnyx `HTTP 422` / invalid source number | `TELNYX_FROM_NUMBER` must be your Telnyx number in `+1…` format with no spaces. |
+| Twilio error 21608 / 21614 (if using Twilio) | Trial account sending to an unverified number / not a mobile number. |
 | Real calls don't create leads | Check: Retell webhook URL is your **Vercel** URL (not localhost), the agent has the **Post-Call Analysis** fields, and Vercel → **Logs** shows `call_analyzed`. The webhook only acts on `call_analyzed`, which arrives ~30–60 s after the call. |
 | Fields like licence or package are empty | The Post-Call Analysis field **names** in Retell must match exactly (`licence_level`, not `license_level`). |
 | The "caller" texts go to the school's own phone | The carrier replaced the caller ID when forwarding. Ask the phone provider to "pass through original caller ID" on forwarded calls. |

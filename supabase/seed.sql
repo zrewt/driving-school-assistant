@@ -36,19 +36,19 @@ values (
   '11111111-1111-4111-8111-111111111111',
   '[
     {"name": "BDE Full Course - Package 1", "price": 745,
-     "details": "MTO-approved Beginner Driver Education: 20 hours in-class (online or Brampton classroom), 10 hours in-car, 10 hours home study. Certificate filed with MTO. Plus HST."},
+     "details": "MTO-approved Beginner Driver Education: 20 hours in-class (online or Brampton classroom), 10 hours in-car, 10 hours home study. Certificate filed with MTO."},
     {"name": "BDE Full Course - Package 2", "price": 995,
-     "details": "Everything in Package 1, plus car rental for the G2 road test and a 1-hour warm-up lesson right before the test. Plus HST."},
+     "details": "Everything in Package 1, plus car rental for the G2 road test and a 1-hour warm-up lesson right before the test."},
     {"name": "BDE Premium - Package 3", "price": 1075,
-     "details": "Everything in Package 2, plus 3 extra in-car lessons (highway and parking practice). Plus HST."},
+     "details": "Everything in Package 2, plus 3 extra in-car lessons (highway and parking practice)."},
     {"name": "Single In-Car Lesson (60 min)", "price": 60,
-     "details": "One-on-one lesson with a licensed instructor. Pickup and drop-off included in our service area. Plus HST."},
+     "details": "One-on-one lesson with a licensed instructor. Pickup and drop-off included in our service area."},
     {"name": "5-Lesson Bundle", "price": 275,
-     "details": "Five 60-minute in-car lessons. Great for G2 test prep or nervous drivers. Plus HST."},
+     "details": "Five 60-minute in-car lessons. Great for G2 test prep or nervous drivers."},
     {"name": "G2 Road Test Car Rental + Warm-Up", "price": 175,
-     "details": "Use our dual-brake car for your G2 road test, with a 1-hour warm-up lesson before the test. Plus HST."},
+     "details": "Use our dual-brake car for your G2 road test, with a 1-hour warm-up lesson before the test."},
     {"name": "G Road Test Car Rental + Warm-Up", "price": 195,
-     "details": "Use our car for your full G road test (includes highway), with a 1-hour warm-up lesson. Plus HST."}
+     "details": "Use our car for your full G road test (includes highway), with a 1-hour warm-up lesson."}
   ]'::jsonb,
   '[
     {"question": "Do I need my G1 before starting the course?",

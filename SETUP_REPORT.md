@@ -53,12 +53,15 @@ This guide is written for a beginner. Work through **Part 2** from top to bottom
 3. **Region: Canada (Central)**. This keeps student data in Canada.
 4. Click **Create new project** and wait about 2 minutes.
 
-### ☐ Step 2: Run the migration (creates the tables)
+### ☐ Step 2: Run the migrations (creates the tables and permissions)
+
+There are **two** files in `supabase/migrations`. Run them **in order**, one at a time:
 
 1. In Supabase, open **SQL Editor** in the left sidebar → **New query**.
 2. Open `supabase/migrations/20261121000000_initial_schema.sql` in VS Code, select all (Ctrl+A), copy.
 3. Paste into the SQL editor → click **Run**. You should see "Success. No rows returned."
-4. Check: **Table Editor** should now list `schools`, `school_info`, `calls`, `leads`, `school_users`.
+4. **New query** again, and do the same with `supabase/migrations/20261121000001_explicit_grants.sql`. This file gives the app permission to use the tables, because newer Supabase projects don't do that automatically. Without it you'll see *"permission denied for table school_users"*. It's safe to run again.
+5. Check: **Table Editor** should now list `schools`, `school_info`, `calls`, `leads`, `school_users`.
 
 ### ☐ Step 3: Load the demo data
 
@@ -292,7 +295,9 @@ The school's own phone must forward calls it can't answer to the **AI phone numb
 |---|---|
 | Login page says "Supabase isn't connected yet" | `.env.local` still has placeholders. Fill in Step 4, then **stop and restart** `npm run dev` (Ctrl+C, then run it again). |
 | "Invalid login credentials" | Wrong password, or the user isn't confirmed. Recreate it with **Auto Confirm User** ticked. |
+| "permission denied for table …" in the terminal, or "Couldn't load your school" | The permissions file wasn't run. Run `supabase/migrations/20261121000001_explicit_grants.sql` in the SQL Editor (Step 2.4), then reload. |
 | Logged in but see "Create your school" | Your login isn't linked. Run the SQL from Step 5 with the exact email you log in with. |
+| Red "hydration mismatch" error in the browser mentioning `data-gr-ext-installed` or `fdprocessedid` | A browser extension (Grammarly, a password manager or form filler) changed the page. It's harmless and only shows during development. Test in a private/InPrivate window to avoid it. |
 | Webhook returns 401 | The signing key doesn't match. Use the Retell key with the **webhook** badge in `RETELL_WEBHOOK_SECRET` (Vercel too), then redeploy. |
 | Dev terminal says "No school has ai_phone_number = +1…" | The AI phone number in **Settings** doesn't match the number Retell answered on. Fix it in Settings. |
 | Dev terminal says "DRY RUN" | `SUPABASE_SERVICE_ROLE_KEY` or the URL is missing or a placeholder. |

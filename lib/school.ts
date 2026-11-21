@@ -14,7 +14,7 @@ export const getCurrentSchool = cache(async () => {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return { supabase, user: null, school: null, role: null };
+  if (!user) return { supabase, user: null, school: null, role: null, loadError: null };
 
   const { data: membership, error } = await supabase
     .from("school_users")
@@ -24,9 +24,10 @@ export const getCurrentSchool = cache(async () => {
     .limit(1)
     .maybeSingle();
 
+  // A failed lookup is NOT the same as "no school yet", so report it separately.
   if (error) console.error("Could not load school membership:", error.message);
 
   const school = (membership?.school ?? null) as unknown as School | null;
   const role = (membership?.role ?? null) as "owner" | "admin" | null;
-  return { supabase, user, school, role };
+  return { supabase, user, school, role, loadError: error?.message ?? null };
 });
